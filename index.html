@@ -181,6 +181,7 @@ function displayWeather(data, currentTime) {
   const today = data.weather[0];
   const area = data.nearest_area[0];
   const city = area.areaName[0].value;
+  const region = data.nearest_area[0].region[0].value;
   const country = area.country[0].value;
 
   const isDay = currentTime.toLowerCase().includes("am");
@@ -192,7 +193,7 @@ function displayWeather(data, currentTime) {
   weatherInfoDiv.innerHTML = `
     <div class="text-center">
       <h2 class="text-4xl font-bold mb-1">${city}</h2>
-      <p class="text-lg text-gray-300 mb-1">${country}</p>
+      <p class="text-lg text-gray-300 mb-1">${region},${country}</p>
       <p class="text-md mt-1 mb-3">${currentTime}</p>
       <p class="text-4xl font-light">${current.temp_C}&deg;C</p>
       <p class="text-xl mt-2">${current.weatherDesc[0].value}</p>
