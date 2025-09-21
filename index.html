@@ -12,7 +12,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            overflow: hidden;
+            overflow: scroll;
             color: white;
         }
 
@@ -86,176 +86,330 @@
     <div class="bg-overlay"></div>
     <div id="weather-bg"></div>
 
-    <main class="relative z-10 flex items-center justify-center min-h-screen p-4">
-        <div class="w-full max-w-md mx-auto space-y-4">
-            <!-- Search Bar -->
-            <div class="glass-card rounded-2xl p-3 shadow-2xl">
-                <div class="flex items-center space-x-4">
-                    <input type="text" id="cityInput" placeholder="Enter city name..." class="w-full bg-transparent text-lg placeholder-gray-300 border-none focus:ring-0 outline-none p-2">
-                    <button id="searchBtn" class="bg-blue-600 hover:bg-blue-700 transition-all duration-300 rounded-xl p-2 px-4 shadow-lg flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
+<main class="relative z-10 flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-md mx-auto space-y-4">
+        <div class="glass-card rounded-2xl p-3 shadow-2xl">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="cityInput" placeholder="Enter city name..." class="w-full bg-transparent text-lg placeholder-gray-300 border-none focus:ring-0 outline-none p-2">
+                
+                <button id="locationBtn" title="Use my location" class="bg-gray-600 hover:bg-gray-700 transition-all duration-300 rounded-xl p-2 shadow-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
 
-            <!-- Weather Display -->
-            <div id="weather-info" class="hidden glass-card rounded-2xl p-8 text-center shadow-2xl"></div>
-
-            <!-- Initial State / Message Box -->
-            <div id="message-box" class="text-center p-8 glass-card rounded-2xl">
-                <h1 id="message-text" class="text-2xl font-semibold text-gray-200">Search for a city</h1>
-                <p id="error-message" class="text-red-400 mt-2 font-medium"></p>
-                <div id="loader" class="hidden loader mx-auto mt-4"></div>
+                <button id="searchBtn" class="bg-blue-600 hover:bg-blue-700 transition-all duration-300 rounded-xl p-2 px-4 shadow-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </button>
             </div>
         </div>
-    </main>
+
+        <div id="weather-info" class="hidden glass-card rounded-2xl p-6 sm:p-8 shadow-2xl"></div>
+
+        <div id="message-box" class="text-center p-8 glass-card rounded-2xl">
+            <h1 id="message-text" class="text-2xl font-semibold text-gray-200">Search for a city</h1>
+            <p id="error-message" class="text-red-400 mt-2 font-medium"></p>
+            <div id="loader" class="hidden loader mx-auto mt-4"></div>
+        </div>
+                <div id="history-container" class="flex flex-wrap gap-2 justify-center"></div>
+    </div>
+</main>
  
 <script>
-const apiUrl = "https://wttr.in/";
-const apiKey = "8d43962fc98e407aa20fa76f9dcd4f4a"; // replace
-const cityInput = document.getElementById("cityInput");
-const searchBtn = document.getElementById("searchBtn");
-const weatherInfoDiv = document.getElementById("weather-info");
-const messageBox = document.getElementById("message-box");
-const messageText = document.getElementById("message-text");
-const errorMessage = document.getElementById("error-message");
-const loader = document.getElementById("loader");
-const weatherBg = document.getElementById("weather-bg");
+    const apiUrl = "https://wttr.in/";
+    const apiKey = "8d43962fc98e407aa20fa76f9dcd4f4a"; // replace
+    const cityInput = document.getElementById("cityInput");
+    const searchBtn = document.getElementById("searchBtn");
+    const weatherInfoDiv = document.getElementById("weather-info");
+    const messageBox = document.getElementById("message-box");
+    const messageText = document.getElementById("message-text");
+    const errorMessage = document.getElementById("error-message");
+    const loader = document.getElementById("loader");
+    const weatherBg = document.getElementById("weather-bg");
+    // NEW: Location button
+    const locationBtn = document.getElementById("locationBtn");
 
-// Background images (smaller versions for faster loading)
-const weatherImages = {
-  thunder: "https://cdn.pixabay.com/photo/2017/08/01/22/02/lightning-2567665_640.jpg",
-  snow: "https://cdn.pixabay.com/photo/2019/12/25/14/49/snow-4718825_640.jpg",
-  rain: "https://cdn.pixabay.com/photo/2024/05/31/12/47/ai-generated-8800538_640.png",
-  mist: "https://cdn.pixabay.com/photo/2021/08/27/12/18/forest-6578551_640.jpg",
-  windy: "https://cdn.pixabay.com/photo/2023/07/19/08/42/grass-8136384_640.jpg",
-  overcast: "https://cdn.pixabay.com/photo/2018/08/21/23/29/fog-3622519_640.jpg",
-  cloudy: "https://cdn.pixabay.com/photo/2020/05/23/15/04/clouds-5210255_640.jpg",
-  partly_cloudy: "https://cdn.pixabay.com/photo/2018/05/30/15/39/thunderstorm-3441687_640.jpg",
-  clear_day: "https://cdn.pixabay.com/photo/2018/08/06/22/55/sun-3588618_640.jpg",
-  clear_night: "https://cdn.pixabay.com/photo/2016/11/29/04/17/bonfire-1867275_640.jpg",
-  allday: "https://cdn.pixabay.com/photo/2021/01/24/20/21/cloud-5946381_640.jpg"
-};
+    // Background images (smaller versions for faster loading)
+    const weatherImages = {
+        thunder: "https://cdn.pixabay.com/photo/2017/08/01/22/02/lightning-2567665_640.jpg",
+        snow: "https://cdn.pixabay.com/photo/2019/12/25/14/49/snow-4718825_640.jpg",
+        rain: "https://cdn.pixabay.com/photo/2024/05/31/12/47/ai-generated-8800538_640.png",
+        mist: "https://cdn.pixabay.com/photo/2021/08/27/12/18/forest-6578551_640.jpg",
+        windy: "https://cdn.pixabay.com/photo/2023/07/19/08/42/grass-8136384_640.jpg",
+        overcast: "https://cdn.pixabay.com/photo/2018/08/21/23/29/fog-3622519_640.jpg",
+        cloudy: "https://cdn.pixabay.com/photo/2020/05/23/15/04/clouds-5210255_640.jpg",
+        partly_cloudy: "https://cdn.pixabay.com/photo/2018/05/30/15/39/thunderstorm-3441687_640.jpg",
+        clear_day: "https://cdn.pixabay.com/photo/2018/08/06/22/55/sun-3588618_640.jpg",
+        clear_night: "https://cdn.pixabay.com/photo/2016/11/29/04/17/bonfire-1867275_640.jpg",
+        allday: "https://cdn.pixabay.com/photo/2021/01/24/20/21/cloud-5946381_640.jpg"
+    };
 
-// cache for city -> time
-const timeCache = {};
+    const timeCache = {};
+    // NEW: Global variable to hold the interval for the live clock
+    let clockInterval = null; 
 
-async function getWeather(city) {
-  weatherInfoDiv.classList.add("hidden");
-  messageBox.classList.remove("hidden");
-  errorMessage.textContent = "";
-  messageText.textContent = `Fetching weather for ${city}...`;
-  loader.classList.remove("hidden");
+    async function getWeather(city) {
+        // NEW: Stop any existing clock interval when a new search starts
+        if (clockInterval) clearInterval(clockInterval);
 
-  try {
-    // fetch wttr first
-    const wttrRes = await fetch(`${apiUrl}${city}?format=j1`);
-    if (!wttrRes.ok) throw new Error("City not found. Please check spelling.");
-    const wttrData = await wttrRes.json();
+        weatherInfoDiv.classList.add("hidden");
+        messageBox.classList.remove("hidden");
+        errorMessage.textContent = "";
+        messageText.textContent = `Fetching weather for ${city}...`;
+        loader.classList.remove("hidden");
 
-    // get lat/long
-    const { latitude, longitude } = wttrData.nearest_area[0];
+        try {
+            const wttrRes = await fetch(`${apiUrl}${encodeURIComponent(city)}?format=j1`);
+            if (!wttrRes.ok) throw new Error("City not found. Please check spelling.");
+            const wttrData = await wttrRes.json();
+            
+            const {
+                latitude,
+                longitude
+            } = wttrData.nearest_area[0];
 
-    // if time is cached, reuse it, else call ipgeo
-    let localTime;
-    if (timeCache[city]) {
-      localTime = timeCache[city];
-    } else {
-      const ipgeoUrl = `https://api.ipgeolocation.io/timezone?apiKey=${apiKey}&lat=${latitude}&long=${longitude}&fields=time_12`;
-      const ipgeoRes = await fetch(ipgeoUrl);
-      const ipgeoData = await ipgeoRes.json();
-      localTime = ipgeoData.time_12;
-      timeCache[city] = localTime; // cache result
+            let localTime;
+            const cityNameKey = wttrData.nearest_area[0].areaName[0].value.toLowerCase();
+            if (timeCache[cityNameKey]) {
+                localTime = timeCache[cityNameKey];
+            } else {
+                const ipgeoUrl = `https://api.ipgeolocation.io/timezone?apiKey=${apiKey}&lat=${latitude}&long=${longitude}&fields=time_12`;
+                const ipgeoRes = await fetch(ipgeoUrl);
+                const ipgeoData = await ipgeoRes.json();
+                localTime = ipgeoData.time_12;
+                timeCache[cityNameKey] = localTime;
+            }
+
+            displayWeather(wttrData, localTime);
+            // NEW: Save successful search to history
+            saveToHistory(wttrData.nearest_area[0].areaName[0].value);
+        } catch (error) {
+            handleError(error.message);
+        }
     }
 
-    displayWeather(wttrData, localTime);
-  } catch (error) {
-    handleError(error.message);
-  }
-}
+    function displayWeather(data, currentTime) {
+        const current = data.current_condition[0];
+        const today = data.weather[0];
+        const area = data.nearest_area[0];
+        const city = area.areaName[0].value;
+        const region = data.nearest_area[0].region[0].value;
+        const country = area.country[0].value;
 
-function displayWeather(data, currentTime) {
-  const current = data.current_condition[0];
-  const today = data.weather[0];
-  const area = data.nearest_area[0];
-  const city = area.areaName[0].value;
-  const region = data.nearest_area[0].region[0].value;
-  const country = area.country[0].value;
+        const isDay = !current.weatherCode || parseInt(current.weatherCode) === 113 ? currentTime.toLowerCase().includes("am") : true;
 
-  const isDay = currentTime.toLowerCase().includes("am");
 
-  loader.classList.add("hidden");
-  messageBox.classList.add("hidden");
-  weatherInfoDiv.classList.remove("hidden");
+        loader.classList.add("hidden");
+        messageBox.classList.add("hidden");
+        weatherInfoDiv.classList.remove("hidden");
+        weatherInfoDiv.classList.add("fade-in");
 
-  weatherInfoDiv.innerHTML = `
-    <div class="text-center">
-      <h2 class="text-4xl font-bold mb-1">${city}</h2>
-      <p class="text-lg text-gray-300 mb-1">${region},${country}</p>
-      <p class="text-md mt-1 mb-3">${currentTime}</p>
-      <p class="text-4xl font-light">${current.temp_C}&deg;C</p>
-      <p class="text-xl mt-2">${current.weatherDesc[0].value}</p>
-      <div class="flex justify-center items-center space-x-4 mt-2 text-lg">
-        <span>Max🌡️: ${today.maxtempC}&deg;</span>
-        <span>Min🌡️: ${today.mintempC}&deg;</span>
-      </div>
-    </div>
-    <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center text-sm">
-      <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.FeelsLikeC}&deg;C</p><p class="text-xs text-gray-300">Feels Like</p></div>
-      <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.humidity}%</p><p class="text-xs text-gray-300">Humidity</p></div>
-      <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.windspeedKmph} km/h</p><p class="text-xs text-gray-300">Wind</p></div>
-      <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.precipMM || 0} mm</p><p class="text-xs text-gray-300">Precipitation</p></div> 
-      <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${today.astronomy[0].sunrise}</p><p class="text-xs text-gray-300">Sunrise</p></div>
-      <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${today.astronomy[0].sunset}</p><p class="text-xs text-gray-300">Sunset</p>
-    </div>
-  `;
+        weatherInfoDiv.innerHTML = `
+            <div class="text-center">
+                <h2 class="text-4xl font-bold mb-1">${city}</h2>
+                <p class="text-lg text-gray-300 mb-1">${region}, ${country}</p>
+                <p id="live-time" class="text-md mt-1 mb-3 font-semibold">${currentTime}</p>
+                <p class="text-4xl font-light">${current.temp_C}&deg;C</p>
+                <p class="text-xl mt-2">${current.weatherDesc[0].value}</p>
+                <div class="flex justify-center items-center space-x-4 mt-2 text-lg">
+                    <span>Max🌡️: ${today.maxtempC}&deg;</span>
+                    <span>Min🌡️: ${today.mintempC}&deg;</span>
+                </div>
+            </div>
+             <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center text-sm">
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.FeelsLikeC}&deg;C</p><p class="text-xs text-gray-300">Feels Like</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.humidity}%</p><p class="text-xs text-gray-300">Humidity</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.windspeedKmph} km/h</p><p class="text-xs text-gray-300">Wind</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${today.astronomy[0].sunrise}</p><p class="text-xs text-gray-300">Sunrise</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${today.astronomy[0].sunset}</p><p class="text-xs text-gray-300">Sunset</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.precipMM || 0} mm</p><p class="text-xs text-gray-300">Precipitation</p></div> 
+            </div>
+            <div id="hourly-forecast-container" class="mt-8 w-full"></div>
+            <div id="forecast-container" class="mt-6 w-full"></div>
+        `;
 
-  updateImageBackground(current.weatherDesc[0].value, isDay);
-}
+        updateImageBackground(current.weatherDesc[0].value, isDay);
+        
+        // NEW FEATURE CALLS
+        displayForecast(data.weather);
+        displayHourlyForecast(data.weather[0].hourly, currentTime);
+        startLiveClock(currentTime);
+    }
 
-function updateImageBackground(weather, isDay) {
-  const w = weather.toLowerCase();
-  let img = weatherImages.allday;
+    // --- NEW FUNCTIONS START HERE ---
 
-  if (w.includes("thunder")) img = weatherImages.thunder;
-  else if (w.includes("snow")) img = weatherImages.snow;
-  else if (w.includes("rain") || w.includes("drizzle")) img = weatherImages.rain;
-  else if (w.includes("mist") || w.includes("fog")) img = weatherImages.mist;
-  else if (w.includes("windy")) img = weatherImages.windy;
-  else if (w.includes("overcast")) img = weatherImages.overcast;
-  else if (w.includes("partly cloudy")) img = weatherImages.partly_cloudy;
-  else if (w.includes("cloudy")) img = weatherImages.cloudy;
-  else if (w.includes("clear") || w.includes("sunny"))
-    img = isDay ? weatherImages.clear_day : weatherImages.clear_night;
+    function displayForecast(forecastData) {
+        const forecastContainer = document.getElementById("forecast-container");
+        let forecastHtml = `<h3 class="text-xl font-semibold mb-3 text-left">3-Day Forecast</h3><div class="space-y-3">`;
 
-  weatherBg.style.backgroundImage = `url(${img})`;
-}
+        forecastData.slice(1, 4).forEach(day => {
+            const date = new Date(day.date);
+            const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
 
-function handleError(message) {
-  weatherInfoDiv.classList.add("hidden");
-  messageBox.classList.remove("hidden");
-  loader.classList.add("hidden");
-  messageText.textContent = "Oops!";
-  errorMessage.textContent = message;
-}
+            forecastHtml += `
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg text-sm transition-all hover:bg-white/10">
+                    <p class="font-medium w-1/4">${dayOfWeek}</p>
+                    <p class="w-1/2 text-center text-gray-300">${day.hourly[4].weatherDesc[0].value}</p>
+                    <p class="font-semibold w-1/4 text-right">${day.mintempC}&deg; / ${day.maxtempC}&deg;</p>
+                </div>
+            `;
+        });
 
-searchBtn.addEventListener("click", () => {
-  const city = cityInput.value.trim();
-  if (city) getWeather(city);
-});
+        forecastHtml += `</div>`;
+        forecastContainer.innerHTML = forecastHtml;
+    }
 
-cityInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    const city = cityInput.value.trim();
-    if (city) getWeather(city);
-  }
-});
+    function displayHourlyForecast(hourlyData, localTimeStr) {
+        const hourlyContainer = document.getElementById("hourly-forecast-container");
+        const currentHour = parseInt(localTimeStr.split(':')[0]);
+        const isPM = localTimeStr.toLowerCase().includes('pm');
+        const adjustedHour = (isPM && currentHour !== 12) ? currentHour + 12 : (currentHour === 12 && !isPM) ? 0 : currentHour;
 
-window.addEventListener("DOMContentLoaded", () => getWeather("Hyderabad"));
+        let hourlyHtml = `<h3 class="text-xl font-semibold mb-3 text-left">Today's Forecast</h3>`;
+        hourlyHtml += `<div class="flex space-x-3 overflow-x-auto pb-3 -mx-1 px-1">`;
+
+        hourlyData.forEach(hour => {
+            const hourTime = parseInt(hour.time) / 100;
+            const isPast = hourTime < adjustedHour;
+
+            hourlyHtml += `
+                <div class="flex-shrink-0 text-center p-3 rounded-lg w-20 ${isPast ? 'bg-white/5 opacity-50' : 'bg-white/10'}">
+                    <p class="text-sm font-medium">${hourTime % 12 === 0 ? 12 : hourTime % 12}${hourTime < 12 ? 'am' : 'pm'}</p>
+                    <p class="text-xl my-1">${hour.tempC > 25 ? '☀️' : '☁️'}</p> 
+                    <p class="font-semibold">${hour.tempC}&deg;C</p>
+                </div>
+            `;
+        });
+
+        hourlyHtml += `</div>`;
+        hourlyContainer.innerHTML = hourlyHtml;
+    }
+
+    function startLiveClock(startTimeStr) {
+        const timeEl = document.getElementById("live-time");
+        if (!timeEl) return;
+
+        let [time, modifier] = startTimeStr.split(' ');
+        let [hours, minutes, seconds] = time.split(':').map(Number);
+
+        if (modifier.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+        if (modifier.toLowerCase() === 'am' && hours === 12) hours = 0;
+
+        let date = new Date();
+        date.setHours(hours, minutes, seconds);
+
+        clockInterval = setInterval(() => {
+            date.setSeconds(date.getSeconds() + 1);
+            timeEl.textContent = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        }, 1000);
+    }
+    
+    function getHistory() {
+        return JSON.parse(localStorage.getItem('weatherHistory')) || [];
+    }
+
+    function saveToHistory(city) {
+        let history = getHistory();
+        // Remove city if it already exists to move it to the front
+        history = history.filter(c => c.toLowerCase() !== city.toLowerCase());
+        history.unshift(city); // Add to the beginning
+        // Keep history to a reasonable size
+        if (history.length > 5) history.pop();
+        localStorage.setItem('weatherHistory', JSON.stringify(history));
+        displayHistory();
+    }
+    
+    function displayHistory() {
+        const history = getHistory();
+        const container = document.getElementById('history-container');
+        if (!container) return; // In case the element isn't created yet
+        
+        container.innerHTML = history.map(city => 
+            `<button class="history-btn bg-white/10 hover:bg-white/20 text-white text-sm py-1 px-3 rounded-full transition-all">${city}</button>`
+        ).join('');
+
+        // Add event listeners to new buttons
+        document.querySelectorAll('.history-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                cityInput.value = btn.textContent;
+                getWeather(btn.textContent);
+            });
+        });
+    }
+
+
+    // --- ORIGINAL FUNCTIONS & LISTENERS ---
+
+    function updateImageBackground(weather, isDay) {
+        const w = weather.toLowerCase();
+        let img = weatherImages.allday;
+
+        if (w.includes("thunder")) img = weatherImages.thunder;
+        else if (w.includes("snow") || w.includes("sleet") || w.includes("blizzard")) img = weatherImages.snow;
+        else if (w.includes("rain") || w.includes("drizzle")) img = weatherImages.rain;
+        else if (w.includes("mist") || w.includes("fog")) img = weatherImages.mist;
+        else if (w.includes("windy")) img = weatherImages.windy;
+        else if (w.includes("overcast")) img = weatherImages.overcast;
+        else if (w.includes("partly cloudy")) img = weatherImages.partly_cloudy;
+        else if (w.includes("cloudy")) img = weatherImages.cloudy;
+        else if (w.includes("clear") || w.includes("sunny"))
+            img = isDay ? weatherImages.clear_day : weatherImages.clear_night;
+
+        weatherBg.style.backgroundImage = `url(${img})`;
+    }
+
+    function handleError(message) {
+        weatherInfoDiv.classList.add("hidden");
+        messageBox.classList.remove("hidden");
+        loader.classList.add("hidden");
+        messageText.textContent = "Oops!";
+        errorMessage.textContent = message;
+    }
+
+    searchBtn.addEventListener("click", () => {
+        const city = cityInput.value.trim();
+        if (city) getWeather(city);
+    });
+
+    cityInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            const city = cityInput.value.trim();
+            if (city) getWeather(city);
+        }
+    });
+
+    // NEW: Location Button Listener
+    locationBtn.addEventListener("click", () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                getWeather(`${lat},${lon}`);
+            }, () => {
+                handleError("Unable to retrieve your location.");
+            });
+        } else {
+            handleError("Geolocation is not supported by your browser.");
+        }
+    });
+
+    // On Load
+    window.addEventListener("DOMContentLoaded", () => {
+        // Create history container dynamically
+        const searchCard = document.querySelector('.glass-card');
+        const historyContainer = document.createElement('div');
+        historyContainer.id = 'history-container';
+        historyContainer.className = 'flex flex-wrap gap-2 justify-center mt-3';
+        searchCard.parentElement.insertBefore(historyContainer, searchCard.nextSibling);
+        
+        displayHistory();
+        getWeather("Hyderabad");
+    });
 </script>
 
 </body>
 
-  </html>
+</html>
