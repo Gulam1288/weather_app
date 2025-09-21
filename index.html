@@ -78,6 +78,23 @@
                 transform: rotate(360deg);
             }
         }
+#history-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+/* Optional: Style the scrollbar for a more "vibey" feel */
+#history-container::-webkit-scrollbar {
+    height: 4px;
+}
+#history-container::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+}
     </style>
 </head>
 
@@ -114,7 +131,7 @@
             <p id="error-message" class="text-red-400 mt-2 font-medium"></p>
             <div id="loader" class="hidden loader mx-auto mt-4"></div>
         </div>
-                <div id="history-container" class="flex flex-wrap gap-2 justify-center"></div>
+                <div id="history-container"></div>
     </div>
 </main>
  
