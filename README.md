@@ -2,8 +2,6 @@
 
 A beautiful, modern weather application with a stunning glassmorphism design that provides real-time weather information with dynamic background images that change based on current weather conditions.
 
-![Weather App Interface](https://github.com/user-attachments/assets/251468ed-6d9f-4adb-9317-178436f10d11)
-
 ## ✨ Features
 
 ### 🎨 Beautiful UI/UX
@@ -134,20 +132,6 @@ The app automatically selects beautiful background images based on current weath
 - **Edge** 88+ ✅
 
 *Note: The app uses modern JavaScript features and CSS properties. Older browsers may not be fully supported.*
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](../../issues).
-
-## 👨‍💻 Author
-
-**Gulam1288**
-- GitHub: [@Gulam1288](https://github.com/Gulam1288)
-
 ---
 
 Made with ❤️ and modern web technologies
