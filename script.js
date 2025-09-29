@@ -1,0 +1,274 @@
+
+    const apiKey = "8d43962fc98e407aa20fa76f9dcd4f4a";
+    const weatherApiUrl = "https://api.weatherapi.com/v1/";
+    const weatherApiKey = "57f2fc980df54e9980f63524252409"; // Free from https://www.weatherapi.com/
+    const cityInput = document.getElementById("cityInput");
+    const searchBtn = document.getElementById("searchBtn");
+    const weatherInfoDiv = document.getElementById("weather-info");
+    const messageBox = document.getElementById("message-box");
+    const messageText = document.getElementById("message-text");
+    const errorMessage = document.getElementById("error-message");
+    const loader = document.getElementById("loader");
+    const weatherBg = document.getElementById("weather-bg");
+    const locationBtn = document.getElementById("locationBtn");
+
+    // Background images
+    const weatherImages = {
+        thunder: "https://cdn.pixabay.com/photo/2017/08/01/22/02/lightning-2567665_640.jpg",
+        snow: "https://cdn.pixabay.com/photo/2019/12/25/14/49/snow-4718825_640.jpg",
+        rain: "https://cdn.pixabay.com/photo/2024/05/31/12/47/ai-generated-8800538_640.png",
+        mist: "https://cdn.pixabay.com/photo/2021/08/27/12/18/forest-6578551_640.jpg",
+        windy: "https://cdn.pixabay.com/photo/2023/07/19/08/42/grass-8136384_640.jpg",
+        overcast: "https://cdn.pixabay.com/photo/2018/08/21/23/29/fog-3622519_640.jpg",
+        cloudy: "https://cdn.pixabay.com/photo/2020/05/23/15/04/clouds-5210255_640.jpg",
+        partly_cloudy: "https://cdn.pixabay.com/photo/2018/05/30/15/39/thunderstorm-3441687_640.jpg",
+        clear_day: "https://cdn.pixabay.com/photo/2018/08/06/22/55/sun-3588618_640.jpg",
+        clear_night: "https://cdn.pixabay.com/photo/2016/11/29/04/17/bonfire-1867275_640.jpg",
+        allday: "https://cdn.pixabay.com/photo/2021/01/24/20/21/cloud-5946381_640.jpg"
+    };
+
+    const timeCache = {};
+    let clockInterval = null;
+
+    async function getWeather(city) {
+        if (clockInterval) clearInterval(clockInterval);
+
+        weatherInfoDiv.classList.add("hidden");
+        messageBox.classList.remove("hidden");
+        errorMessage.textContent = "";
+        messageText.textContent = `Fetching weather for ${city}...`;
+        loader.classList.remove("hidden");
+
+        try {
+            // Use WeatherAPI for comprehensive data
+            const response = await fetch(`${weatherApiUrl}forecast.json?key=${weatherApiKey}&q=${encodeURIComponent(city)}&days=3&aqi=no&alerts=no`);
+            
+            if (!response.ok) {
+                if (response.status === 400) throw new Error("City not found. Please check spelling.");
+                throw new Error("Weather service unavailable. Please try again.");
+            }
+            
+            const data = await response.json();
+            
+            // Get local time using existing ipgeo logic (preserved from your original)
+            let localTime;
+            const cityNameKey = data.location.name.toLowerCase();
+            if (timeCache[cityNameKey]) {
+                localTime = timeCache[cityNameKey];
+            } else {
+                const ipgeoUrl = `https://api.ipgeolocation.io/timezone?apiKey=${apiKey}&lat=${data.location.lat}&long=${data.location.lon}&fields=time_12`;
+                const ipgeoRes = await fetch(ipgeoUrl);
+                const ipgeoData = await ipgeoRes.json();
+                localTime = ipgeoData.time_12;
+                timeCache[cityNameKey] = localTime;
+            }
+
+            displayWeather(data, localTime);
+            saveToHistory(data.location.name);
+        } catch (error) {
+            handleError(error.message);
+        }
+    }
+
+    function displayWeather(data, currentTime) {
+        const current = data.current;
+        const location = data.location;
+        const forecast = data.forecast.forecastday[0];
+        const isDay = current.is_day === 1;
+
+        loader.classList.add("hidden");
+        messageBox.classList.add("hidden");
+        weatherInfoDiv.classList.remove("hidden");
+        weatherInfoDiv.classList.add("fade-in");
+
+        weatherInfoDiv.innerHTML = `
+            <div class="text-center">
+                <h2 class="text-4xl font-bold mb-1">${location.name}</h2>
+                <p class="text-lg text-gray-300 mb-1">${location.region}, ${location.country}</p>
+                <p id="live-time" class="text-md mt-1 mb-3 font-semibold">${currentTime}</p>
+                <p class="text-4xl font-light">${current.temp_c}&deg;C</p>
+                <p class="text-xl mt-2">${current.condition.text}</p>
+                <div class="flex justify-center items-center space-x-4 mt-2 text-lg">
+                    <span>Max🌡️: ${forecast.day.maxtemp_c}&deg;</span>
+                    <span>Min🌡️: ${forecast.day.mintemp_c}&deg;</span>
+                </div>
+            </div>
+             <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-4 text-center text-sm">
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.feelslike_c}&deg;C</p><p class="text-xs text-gray-300">Feels Like</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.humidity}%</p><p class="text-xs text-gray-300">Humidity</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.wind_kph} km/h</p><p class="text-xs text-gray-300">Wind</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${current.precip_mm} mm</p><p class="text-xs text-gray-300">Precipitation</p></div> 
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${forecast.astro.sunrise}</p><p class="text-xs text-gray-300">Sunrise</p></div>
+                <div class="p-4 bg-white/5 rounded-lg"><p class="font-semibold text-lg">${forecast.astro.sunset}</p><p class="text-xs text-gray-300">Sunset</p></div>
+            </div>
+            <div id="hourly-forecast-container" class="mt-8 w-full"></div>
+            <div id="forecast-container" class="mt-6 w-full"></div>
+        `;
+
+        updateImageBackground(current.condition.text, isDay);
+        displayForecast(data.forecast);
+        displayHourlyForecast(forecast.hour, currentTime);
+        startLiveClock(currentTime);
+    }
+
+    function displayForecast(forecastData) {
+        const forecastContainer = document.getElementById("forecast-container");
+        let forecastHtml = `<h3 class="text-xl font-semibold mb-3 text-left">3-Day Forecast</h3><div class="space-y-3">`;
+
+        forecastData.forecastday.slice(1, 4).forEach(day => {
+            const date = new Date(day.date);
+            const dayOfWeek = date.toLocaleString('en-US', { weekday: 'short' });
+
+            forecastHtml += `
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-lg text-sm transition-all hover:bg-white/10">
+                    <p class="font-medium w-1/4">${dayOfWeek}</p>
+                    <p class="w-1/2 text-center text-gray-300">${day.day.condition.text}</p>
+                    <p class="font-semibold w-1/4 text-right">${day.day.mintemp_c}&deg; / ${day.day.maxtemp_c}&deg;</p>
+                </div>
+            `;
+        });
+
+        forecastHtml += `</div>`;
+        forecastContainer.innerHTML = forecastHtml;
+    }
+
+    function displayHourlyForecast(hourlyData, localTimeStr) {
+        const hourlyContainer = document.getElementById("hourly-forecast-container");
+        const currentHour = parseInt(localTimeStr.split(':')[0]);
+        const isPM = localTimeStr.toLowerCase().includes('pm');
+        const adjustedHour = (isPM && currentHour !== 12) ? currentHour + 12 : (currentHour === 12 && !isPM) ? 0 : currentHour;
+
+        let hourlyHtml = `<h3 class="text-xl font-semibold mb-3 text-left">Today's Forecast</h3>`;
+        hourlyHtml += `<div class="flex space-x-3 overflow-x-auto pb-3 -mx-1 px-1">`;
+
+        hourlyData.forEach(hour => {
+            const hourTime = new Date(hour.time).getHours();
+            const isPast = hourTime < adjustedHour;
+            const displayHour = hourTime % 12 === 0 ? 12 : hourTime % 12;
+            const ampm = hourTime < 12 ? 'am' : 'pm';
+
+            hourlyHtml += `
+                <div class="flex-shrink-0 text-center p-3 rounded-lg w-20 ${isPast ? 'bg-white/5 opacity-50' : 'bg-white/10'}">
+                    <p class="text-sm font-medium">${displayHour}${ampm}</p>
+                    <p class="text-xl my-1">${hour.temp_c > 25 ? '☀️' : '☁️'}</p> 
+                    <p class="font-semibold">${hour.temp_c}&deg;C</p>
+                </div>
+            `;
+        });
+
+        hourlyHtml += `</div>`;
+        hourlyContainer.innerHTML = hourlyHtml;
+    }
+
+    function startLiveClock(startTimeStr) {
+        const timeEl = document.getElementById("live-time");
+        if (!timeEl) return;
+
+        let [time, modifier] = startTimeStr.split(' ');
+        let [hours, minutes, seconds] = time.split(':').map(Number);
+
+        if (modifier.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+        if (modifier.toLowerCase() === 'am' && hours === 12) hours = 0;
+
+        let date = new Date();
+        date.setHours(hours, minutes, seconds);
+
+        clockInterval = setInterval(() => {
+            date.setSeconds(date.getSeconds() + 1);
+            timeEl.textContent = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        }, 1000);
+    }
+
+    function getHistory() {
+        return JSON.parse(localStorage.getItem('weatherHistory')) || [];
+    }
+
+    function saveToHistory(city) {
+        let history = getHistory();
+        history = history.filter(c => c.toLowerCase() !== city.toLowerCase());
+        history.unshift(city);
+        if (history.length > 5) history.pop();
+        localStorage.setItem('weatherHistory', JSON.stringify(history));
+        displayHistory();
+    }
+
+    function displayHistory() {
+        const history = getHistory();
+        const container = document.getElementById('history-container');
+        if (!container) return;
+        
+        container.innerHTML = history.map(city => 
+            `<button class="history-btn bg-white/10 hover:bg-white/20 text-white text-sm py-1 px-3 rounded-full transition-all">${city}</button>`
+        ).join('');
+
+        document.querySelectorAll('.history-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                cityInput.value = btn.textContent;
+                getWeather(btn.textContent);
+            });
+        });
+    }
+
+    function updateImageBackground(weather, isDay) {
+        const w = weather.toLowerCase();
+        let img = weatherImages.allday;
+
+        if (w.includes("thunder")) img = weatherImages.thunder;
+        else if (w.includes("snow") || w.includes("sleet") || w.includes("blizzard")) img = weatherImages.snow;
+        else if (w.includes("rain") || w.includes("drizzle")) img = weatherImages.rain;
+        else if (w.includes("mist") || w.includes("fog")) img = weatherImages.mist;
+        else if (w.includes("windy")) img = weatherImages.windy;
+        else if (w.includes("overcast")) img = weatherImages.overcast;
+        else if (w.includes("partly cloudy")) img = weatherImages.partly_cloudy;
+        else if (w.includes("cloudy")) img = weatherImages.cloudy;
+        else if (w.includes("clear") || w.includes("sunny"))
+            img = isDay ? weatherImages.clear_day : weatherImages.clear_night;
+
+        weatherBg.style.backgroundImage = `url(${img})`;
+    }
+
+    function handleError(message) {
+        weatherInfoDiv.classList.add("hidden");
+        messageBox.classList.remove("hidden");
+        loader.classList.add("hidden");
+        messageText.textContent = "Oops!";
+        errorMessage.textContent = message;
+    }
+
+    searchBtn.addEventListener("click", () => {
+        const city = cityInput.value.trim();
+        if (city) getWeather(city);
+    });
+
+    cityInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+            const city = cityInput.value.trim();
+            if (city) getWeather(city);
+        }
+    });
+
+    locationBtn.addEventListener("click", () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                getWeather(`${lat},${lon}`);
+            }, () => {
+                handleError("Unable to retrieve your location.");
+            });
+        } else {
+            handleError("Geolocation is not supported by your browser.");
+        }
+    });
+
+    // On Load
+    window.addEventListener("DOMContentLoaded", () => {
+        const searchCard = document.querySelector('.glass-card');
+        const historyContainer = document.createElement('div');
+        historyContainer.id = 'history-container';
+        historyContainer.className = 'flex flex-wrap gap-2 justify-center mt-3';
+        searchCard.parentElement.insertBefore(historyContainer, searchCard.nextSibling);
+        
+        displayHistory();
+        getWeather("Hyderabad");
+    });
